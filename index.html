@@ -102,8 +102,6 @@
     <p class="empty hidden" id="noTrain"></p>
 
     <button class="btn" id="start">🔔 알림 맞추기</button>
-    <p class="hint">알림이 울릴 때까지 이 페이지를 화면에 켜 둬야 해.</p>
-    <button class="btn ghost" id="test">10초 뒤 테스트 알림</button>
   </section>
 
   <section class="card status hidden" id="statusCard">
@@ -342,10 +340,6 @@ $("start").addEventListener("click", () => {
   const trainAt = new Date(); trainAt.setHours(0, min, 0, 0); // 24:00 넘는 시간도 다음 날로 계산됨
   const opt = trainSel.selectedOptions[0];
   start(new Date(trainAt.getTime() - leadMin * 60000), trainAt, opt.text.includes("녹동행"), false);
-});
-$("test").addEventListener("click", () => {
-  const alarmAt = new Date(Date.now() + 10000);
-  start(alarmAt, new Date(alarmAt.getTime() + leadMin * 60000), false, true);
 });
 $("stop").addEventListener("click", stop);
 
