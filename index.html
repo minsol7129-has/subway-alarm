@@ -262,9 +262,33 @@ function showStatus() {
   tick();
 }
 
+// 알림(배너) 허용 묻기
+function askPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+}
+
+// 폰 알림(배너) 띄우기. 아이폰 홈 화면 앱은 서비스 워커로 띄워야 해서 그걸 먼저 써 봄
+async function showNotice(title, body) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const opts = { body, icon: "icon-192.png", tag: "subway-alarm", renotify: true, requireInteraction: true, vibrate: [300, 150, 300] };
+  try {
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) return await reg.showNotification(title, opts);
+    }
+  } catch (e) {}
+  try { new Notification(title, opts); } catch (e) {}
+}
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
 function start(alarmAt, trainAt, nokdong, isTest) {
-  unlockAudio(); // 버튼 누른 순간에 소리 켜 두기
-  alarm = { alarmAt, trainAt, nokdong, isTest, station: stationName(stationSel.value), dir: DIR_NAME[direction] };
+  unlockAudio();   // 1) 버튼 누른 순간에 소리 켜 두기
+  askPermission(); // 2) 알림 허용 묻기
+  alarm ={ alarmAt, trainAt, nokdong, isTest, station: stationName(stationSel.value), dir: DIR_NAME[direction] };
   saveCurrent();
   showStatus();
 }
@@ -287,6 +311,7 @@ function ring() {
   const msg = `${alarm.station} ${alarm.dir} ${hhmm(alarm.trainAt)} 열차가 5분 뒤 도착해`;
   $("statusMsg").textContent = msg;
   document.title = "🔔 열차 곧 도착!";
+  showNotice("🚇 지하철 온다!!", msg);
   if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
   playFanfare(); // 한 번만 짧게 (약 2초)
 }
