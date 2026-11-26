@@ -267,33 +267,40 @@ function ring() {
     try { new Notification("🚇 열차 도착 5분 전", { body: msg, requireInteraction: true }); } catch (e) {}
   }
   if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
-  playChime(); // 한 번만 짧게 (약 2초)
+  playFanfare(); // 한 번만 짧게 (약 2초)
 }
 
-// 지하철 도착 안내 느낌의 짧은 차임 멜로디 (직접 만든 소리, 약 2초)
+// "빰빠바밤~" 트럼펫 느낌의 짧은 팡파르 (직접 만든 소리, 약 2초)
 // [음 높이(Hz), 시작 시각(초), 길이(초)]
-const CHIME = [
-  [784, 0.00, 0.5],   // 솔
-  [988, 0.22, 0.5],   // 시
-  [1175, 0.44, 0.5],  // 레
-  [1568, 0.66, 1.3],  // 높은 솔 (길게)
-  [1175, 0.66, 1.3],  // 레 (같이 울려서 화음)
+const FANFARE = [
+  [523, 0.00, 0.12],  // 도  (빰)
+  [523, 0.15, 0.12],  // 도  (빠)
+  [523, 0.30, 0.12],  // 도  (바)
+  [659, 0.45, 0.30],  // 미  (밤)
+  [523, 0.78, 0.14],  // 도
+  [659, 0.95, 0.14],  // 미
+  [784, 1.12, 0.85],  // 솔 (길게~)
+  [659, 1.12, 0.85],  // 미 (같이 울려서 화음)
+  [523, 1.12, 0.85],  // 도 (같이 울려서 화음)
 ];
-function playChime() {
+function playFanfare() {
   if (!audioCtx) return;
   try {
     const now = audioCtx.currentTime + 0.05;
-    CHIME.forEach(([freq, t, len]) => {
-      // 종소리처럼: 기본음 + 살짝 높은 배음, 빨리 커졌다가 천천히 작아짐
-      [[1, 0.35], [2.01, 0.08]].forEach(([mul, vol]) => {
-        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-        o.type = "sine"; o.frequency.value = freq * mul;
-        g.gain.setValueAtTime(0.0001, now + t);
-        g.gain.exponentialRampToValueAtTime(vol, now + t + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + t + len);
-        o.connect(g).connect(audioCtx.destination);
-        o.start(now + t); o.stop(now + t + len + 0.05);
-      });
+    FANFARE.forEach(([freq, t, len]) => {
+      // 트럼펫처럼: 톱니파 소리를 필터로 부드럽게 깎고, 처음에 살짝 밝아졌다가 줄어듦
+      const o = audioCtx.createOscillator(), f = audioCtx.createBiquadFilter(), g = audioCtx.createGain();
+      o.type = "sawtooth"; o.frequency.value = freq;
+      f.type = "lowpass"; f.Q.value = 1;
+      f.frequency.setValueAtTime(freq * 2, now + t);
+      f.frequency.linearRampToValueAtTime(freq * 6, now + t + 0.04);
+      f.frequency.linearRampToValueAtTime(freq * 3, now + t + len);
+      g.gain.setValueAtTime(0.0001, now + t);
+      g.gain.exponentialRampToValueAtTime(0.18, now + t + 0.03);
+      g.gain.setValueAtTime(0.18, now + t + len * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + t + len);
+      o.connect(f).connect(g).connect(audioCtx.destination);
+      o.start(now + t); o.stop(now + t + len + 0.05);
     });
   } catch (e) {}
 }
