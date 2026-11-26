@@ -98,8 +98,27 @@
     <select id="train"></select>
     <p class="empty hidden" id="noTrain"></p>
 
-    <button class="btn" id="start">알림 맞추기</button>
+    <button class="btn" id="iosAlarm">📱 아이폰 알람으로 맞추기</button>
+    <p class="hint">화면이 꺼져도, 무음이어도, 페이지를 닫아도 울려. (아래 '처음 한 번 준비'를 먼저 해줘)</p>
+    <button class="btn ghost" id="start">이 페이지에서 알림 (화면 켜 둘 때만)</button>
     <button class="btn ghost" id="test">10초 뒤 테스트 알림</button>
+  </section>
+
+  <section class="card note">
+    <details>
+      <summary><strong>📱 아이폰 알람 — 처음 한 번 준비</strong></summary>
+      <ol>
+        <li>아이폰 <b>단축어</b> 앱을 열고 오른쪽 위 <b>＋</b>를 눌러.</li>
+        <li><b>동작 추가</b>에서 <b>"알람 생성"</b>(영어: Create Alarm)을 검색해서 넣어.</li>
+        <li>알람의 <b>시간</b> 칸을 누르고 <b>단축어 입력</b>(Shortcut Input)을 골라.</li>
+        <li>레이블(이름) 칸에는 <b>지하철 온다!!</b>라고 적어.</li>
+        <li>맨 위 단축어 이름을 <b>지하철온다</b>로 바꿔. (띄어쓰기 없이, 이 이름이 꼭 같아야 해)</li>
+        <li>완료를 누르면 준비 끝!</li>
+      </ol>
+      <p>그다음부터는 열차를 고르고 <b>📱 아이폰 알람으로 맞추기</b>를 누르면, 열차 5분 전 시간으로 아이폰 시계 앱에 알람이 생겨.</p>
+      <button class="btn ghost" id="iosTest">2분 뒤 알람으로 단축어 테스트</button>
+      <p>처음 실행할 때 "허용할까요?"를 물으면 허용을 눌러줘. 생긴 알람은 시계 앱에 남으니까, 다 쓴 건 시계 앱에서 지우면 돼.</p>
+    </details>
   </section>
 
   <section class="card status hidden" id="statusCard">
@@ -114,8 +133,8 @@
     <ul>
       <li>역, 방향을 고르면 오늘 남은 열차 시간이 목록에 나와. 그중 탈 열차를 고르면 돼.</li>
       <li>요일은 오늘 날짜로 자동으로 골라져. 공휴일이나 명절이면 직접 바꿔줘.</li>
-      <li>알림이 울릴 때까지 <b>이 페이지를 열어 둬야</b> 해. 화면을 끄거나 다른 앱으로 오래 가면 폰이 페이지를 멈춰서 늦게 울릴 수 있어.</li>
-      <li>처음에 "알림 허용"을 물으면 허용을 눌러줘. 소리가 나려면 폰이 무음이 아니어야 해.</li>
+      <li><b>아이폰 알람</b>으로 맞추면 진짜 시계 알람이라 화면이 꺼져도, 무음이어도 울려.</li>
+      <li><b>이 페이지에서 알림</b>은 페이지를 화면에 켜 둬야 하고, 무음이면 소리가 안 나.</li>
       <li>시간표 출처: <a href="https://www.grtc.co.kr/subway/contents/directionOfSotae" target="_blank" rel="noopener">광주교통공사 열차시각표</a> (2026-11-26에 가져옴). 시간표가 바뀌면 다시 가져와야 해.</li>
     </ul>
   </section>
@@ -209,6 +228,7 @@ function fillTrains() {
   msg.classList.toggle("hidden", list.length > 0);
   trainSel.classList.toggle("hidden", list.length === 0);
   $("start").disabled = list.length === 0;
+  $("iosAlarm").disabled = list.length === 0;
   $("dayHint").textContent = day === todayDayType()
     ? `오늘은 ${DAY_NAME[day]} 시간표야.`
     : `오늘 날짜로는 ${DAY_NAME[todayDayType()]}인데 ${DAY_NAME[day]} 시간표로 보고 있어.`;
@@ -334,6 +354,23 @@ function stop() {
   formCard.classList.remove("hidden");
   fillTrains();
 }
+
+// 아이폰 단축어 "지하철온다"를 실행해서 시계 앱에 알람 만들기
+// 단축어에는 알람 시각을 "HH:MM" 글자로 넘겨줌
+const SHORTCUT_NAME = "지하철온다";
+function openIosAlarm(alarmAt) {
+  const url = "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT_NAME) +
+    "&input=text&text=" + encodeURIComponent(hhmm(alarmAt));
+  location.href = url;
+}
+$("iosAlarm").addEventListener("click", () => {
+  if (!trainSel.value) return;
+  const trainAt = new Date(); trainAt.setHours(0, +trainSel.value, 0, 0);
+  openIosAlarm(new Date(trainAt.getTime() - LEAD_MIN * 60000));
+});
+$("iosTest").addEventListener("click", () => {
+  openIosAlarm(new Date(Date.now() + 2 * 60000));
+});
 
 $("start").addEventListener("click", () => {
   if (!trainSel.value) return;
