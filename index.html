@@ -98,45 +98,9 @@
     <select id="train"></select>
     <p class="empty hidden" id="noTrain"></p>
 
-    <button class="btn" id="iosAlarm">📱 아이폰 알람으로 맞추기</button>
-    <p class="hint">화면이 꺼져도, 무음이어도, 페이지를 닫아도 울려. (아래 '처음 한 번 준비'를 먼저 해줘)</p>
-    <button class="btn ghost" id="start">이 페이지에서 알림 (화면 켜 둘 때만)</button>
+    <button class="btn" id="start">🔔 알림 맞추기</button>
+    <p class="hint">알림이 울릴 때까지 이 페이지를 화면에 켜 둬야 해.</p>
     <button class="btn ghost" id="test">10초 뒤 테스트 알림</button>
-  </section>
-
-  <section class="card note">
-    <details>
-      <summary><strong>📱 아이폰 알람 — 처음 한 번 준비</strong></summary>
-      <ol>
-        <li>아이폰 <b>단축어</b> 앱을 열고 오른쪽 위 <b>＋</b>를 눌러.</li>
-        <li><b>동작 추가</b>에서 <b>"알람 생성"</b>(영어: Create Alarm)을 검색해서 넣어.</li>
-        <li>알람의 <b>시간</b> 칸을 누르고 <b>단축어 입력</b>(Shortcut Input)을 골라.</li>
-        <li>레이블(이름) 칸에는 <b>지하철 온다!!</b>라고 적어.</li>
-        <li>맨 위 단축어 이름을 <b>지하철온다</b>로 바꿔. (띄어쓰기 없이, 이 이름이 꼭 같아야 해)</li>
-        <li>완료를 누르면 준비 끝!</li>
-      </ol>
-      <p>그다음부터는 열차를 고르고 <b>📱 아이폰 알람으로 맞추기</b>를 누르면, 열차 5분 전 시간으로 아이폰 시계 앱에 알람이 생겨.</p>
-      <button class="btn ghost" id="iosTest">2분 뒤 알람으로 단축어 테스트</button>
-      <p>처음 실행할 때 "허용할까요?"를 물으면 허용을 눌러줘. 생긴 알람은 시계 앱에 남으니까, 다 쓴 건 시계 앱에서 지우면 돼.</p>
-    </details>
-  </section>
-
-  <section class="card note">
-    <details>
-      <summary><strong>🎺 팡파르를 아이폰 알람 소리로 쓰기</strong></summary>
-      <p><a class="btn ghost" style="display:block;text-align:center;text-decoration:none" href="fanfare.m4a" download="지하철온다_팡파르.m4a">팡파르 소리 파일 받기 (m4a, 2초)</a></p>
-      <ol>
-        <li>위 버튼으로 파일을 받아. (파일 앱 → 다운로드 폴더에 저장돼)</li>
-        <li>앱스토어에서 무료 앱 <b>GarageBand</b>를 설치하고 열어.</li>
-        <li>새로 만들기 → <b>오디오 레코더</b>를 골라.</li>
-        <li>위쪽 <b>트랙 보기</b> 버튼(벽돌 모양)을 누르고, 오른쪽 위 <b>루프</b> 버튼(고리 모양)을 눌러.</li>
-        <li><b>파일</b> 탭 → <b>"파일 앱에서 항목 탐색"</b> → 받은 팡파르 파일을 골라.</li>
-        <li>목록에 나온 팡파르를 <b>꾹 눌러서</b> 트랙 맨 앞으로 끌어다 놓아.</li>
-        <li>왼쪽 위 <b>▼</b> → <b>나의 노래</b>로 나가서, 방금 만든 노래를 꾹 누르고 <b>공유 → 벨소리</b>.</li>
-        <li>이름을 <b>지하철 온다</b>로 하고 <b>내보내기</b>. (뒤에 물어보는 건 "완료" 눌러도 돼)</li>
-        <li>이제 시계 앱 알람 편집 → <b>사운드</b>에서 <b>지하철 온다</b>를 고를 수 있어.</li>
-      </ol>
-    </details>
   </section>
 
   <section class="card status hidden" id="statusCard">
@@ -151,8 +115,8 @@
     <ul>
       <li>역, 방향을 고르면 오늘 남은 열차 시간이 목록에 나와. 그중 탈 열차를 고르면 돼.</li>
       <li>요일은 오늘 날짜로 자동으로 골라져. 공휴일이나 명절이면 직접 바꿔줘.</li>
-      <li><b>아이폰 알람</b>으로 맞추면 진짜 시계 알람이라 화면이 꺼져도, 무음이어도 울려.</li>
-      <li><b>이 페이지에서 알림</b>은 페이지를 화면에 켜 둬야 하고, 무음이면 소리가 안 나.</li>
+      <li>알림이 울릴 때까지 <b>이 페이지를 화면에 켜 둬야</b> 해. 화면이 꺼지면 폰이 페이지를 멈춰서 안 울려.</li>
+      <li>소리가 나려면 무음을 풀고 미디어 볼륨을 올려줘.</li>
       <li>시간표 출처: <a href="https://www.grtc.co.kr/subway/contents/directionOfSotae" target="_blank" rel="noopener">광주교통공사 열차시각표</a> (2026-11-26에 가져옴). 시간표가 바뀌면 다시 가져와야 해.</li>
     </ul>
   </section>
@@ -246,7 +210,6 @@ function fillTrains() {
   msg.classList.toggle("hidden", list.length > 0);
   trainSel.classList.toggle("hidden", list.length === 0);
   $("start").disabled = list.length === 0;
-  $("iosAlarm").disabled = list.length === 0;
   $("dayHint").textContent = day === todayDayType()
     ? `오늘은 ${DAY_NAME[day]} 시간표야.`
     : `오늘 날짜로는 ${DAY_NAME[todayDayType()]}인데 ${DAY_NAME[day]} 시간표로 보고 있어.`;
@@ -280,23 +243,30 @@ function unlockAudio() {
   } catch (e) {}
 }
 
-async function askPermission() {
-  if ("Notification" in window && Notification.permission === "default") {
-    try { await Notification.requestPermission(); } catch (e) {}
-  }
+// 맞춰 둔 알림을 기억해 두기 (페이지를 닫았다 다시 열어도 이어서 세기)
+const CUR_KEY = "subway-alarm-current";
+function saveCurrent() {
+  try {
+    if (!alarm) localStorage.removeItem(CUR_KEY);
+    else localStorage.setItem(CUR_KEY, JSON.stringify({ ...alarm, alarmAt: +alarm.alarmAt, trainAt: +alarm.trainAt }));
+  } catch (e) {}
 }
 
-async function start(alarmAt, trainAt, nokdong, isTest) {
-  unlockAudio();          // 1) 소리 먼저 (버튼 누른 순간)
-  await askPermission();  // 2) 그다음 알림 허용 물어보기
-  alarm = { alarmAt, trainAt, nokdong, isTest, station: stationName(stationSel.value), dir: DIR_NAME[direction] };
+function showStatus() {
   formCard.classList.add("hidden");
   statusCard.classList.remove("hidden", "ringing");
   $("statusTrain").textContent =
-    `${alarm.station} · ${alarm.dir} · ${hhmm(trainAt)}${nokdong ? " 녹동행" : ""} 열차` + (isTest ? " (테스트)" : "");
+    `${alarm.station} · ${alarm.dir} · ${hhmm(alarm.trainAt)}${alarm.nokdong ? " 녹동행" : ""} 열차` + (alarm.isTest ? " (테스트)" : "");
   clearInterval(timer);
   timer = setInterval(tick, 500);
   tick();
+}
+
+function start(alarmAt, trainAt, nokdong, isTest) {
+  unlockAudio(); // 버튼 누른 순간에 소리 켜 두기
+  alarm = { alarmAt, trainAt, nokdong, isTest, station: stationName(stationSel.value), dir: DIR_NAME[direction] };
+  saveCurrent();
+  showStatus();
 }
 
 function tick() {
@@ -317,9 +287,6 @@ function ring() {
   const msg = `${alarm.station} ${alarm.dir} ${hhmm(alarm.trainAt)} 열차가 5분 뒤 도착해`;
   $("statusMsg").textContent = msg;
   document.title = "🔔 열차 곧 도착!";
-  if ("Notification" in window && Notification.permission === "granted") {
-    try { new Notification("🚇 열차 도착 5분 전", { body: msg, requireInteraction: true }); } catch (e) {}
-  }
   if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
   playFanfare(); // 한 번만 짧게 (약 2초)
 }
@@ -367,28 +334,23 @@ function stopSound() {
 function stop() {
   clearInterval(timer); stopSound();
   alarm = null; ringing = false;
+  saveCurrent();
   document.title = "지하철 온다!! 🔔";
   statusCard.classList.add("hidden");
   formCard.classList.remove("hidden");
   fillTrains();
 }
 
-// 아이폰 단축어 "지하철온다"를 실행해서 시계 앱에 알람 만들기
-// 단축어에는 알람 시각을 "HH:MM" 글자로 넘겨줌
-const SHORTCUT_NAME = "지하철온다";
-function openIosAlarm(alarmAt) {
-  const url = "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT_NAME) +
-    "&input=text&text=" + encodeURIComponent(hhmm(alarmAt));
-  location.href = url;
-}
-$("iosAlarm").addEventListener("click", () => {
-  if (!trainSel.value) return;
-  const trainAt = new Date(); trainAt.setHours(0, +trainSel.value, 0, 0);
-  openIosAlarm(new Date(trainAt.getTime() - LEAD_MIN * 60000));
-});
-$("iosTest").addEventListener("click", () => {
-  openIosAlarm(new Date(Date.now() + 2 * 60000));
-});
+// 페이지를 닫았다가 다시 열어도, 예약해 둔 알림을 다시 보여 주기
+try {
+  const cur = JSON.parse(localStorage.getItem(CUR_KEY) || "null");
+  if (cur && cur.alarmAt > Date.now()) {
+    alarm = { ...cur, alarmAt: new Date(cur.alarmAt), trainAt: new Date(cur.trainAt) };
+    showStatus();
+  } else if (cur) {
+    localStorage.removeItem(CUR_KEY);
+  }
+} catch (e) {}
 
 $("start").addEventListener("click", () => {
   if (!trainSel.value) return;
