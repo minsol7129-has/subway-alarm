@@ -68,6 +68,7 @@
   .note li { margin-bottom: 4px; }
   .note a { color: inherit; }
   .hidden { display: none; }
+  .linkbtn { background: none; border: 0; padding: 4px 0; margin-top: 4px; color: var(--muted); font-size: .85rem; text-decoration: underline; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -119,6 +120,7 @@
       <li>알림 소리는 폰 기본 알림음이야. 처음에 "알림 허용"을 물으면 허용을 눌러줘. 무음이면 진동만 와.</li>
       <li>시간표 출처: <a href="https://www.grtc.co.kr/subway/contents/directionOfSotae" target="_blank" rel="noopener">광주교통공사 열차시각표</a> (2026-11-26에 가져옴). 시간표가 바뀌면 다시 가져와야 해.</li>
     </ul>
+    <button type="button" class="linkbtn" id="test">🔔 알림 테스트 (10초 뒤)</button>
   </section>
 </main>
 
@@ -341,6 +343,13 @@ $("start").addEventListener("click", () => {
   start(new Date(trainAt.getTime() - leadMin * 60000), trainAt, opt.text.includes("녹동행"), false);
 });
 $("stop").addEventListener("click", stop);
+$("test").addEventListener("click", () => {
+  // 진짜 알림을 맞춰 둔 상태면, 테스트로 덮어쓰기 전에 물어보기
+  if (alarm && !alarm.isTest && !ringing && !confirm("지금 맞춰 둔 알림이 테스트로 바뀌어. 그래도 할까?")) return;
+  ringing = false;
+  const alarmAt = new Date(Date.now() + 10000); // 10초 뒤
+  start(alarmAt, new Date(alarmAt.getTime() + leadMin * 60000), false, true);
+});
 
 // 다른 앱에 갔다 돌아왔을 때 바로 다시 확인
 document.addEventListener("visibilitychange", tick);
