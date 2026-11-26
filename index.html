@@ -229,19 +229,28 @@ setSeg("daySeg", day);
 fillTrains();
 setInterval(() => { if (!alarm) fillTrains(); }, 30000); // 30초마다 "몇 분 뒤" 새로고침
 
+// 소리 잠금 풀기: 폰은 "사용자가 버튼을 누른 그 순간"에만 소리를 켜게 해 줘.
+// 그래서 알림 허용 창을 띄우기 "전에", 버튼을 누르자마자 바로 실행해야 해.
+function unlockAudio() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    // 아이폰은 실제로 소리를 한 번 내야 풀려서, 아주 짧은 무음을 재생
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
+  } catch (e) {}
+}
+
 async function askPermission() {
   if ("Notification" in window && Notification.permission === "default") {
     try { await Notification.requestPermission(); } catch (e) {}
   }
-  // 소리는 버튼을 누를 때 미리 켜 둬야 나중에 울릴 수 있음
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") await audioCtx.resume();
-  } catch (e) {}
 }
 
 async function start(alarmAt, trainAt, nokdong, isTest) {
-  await askPermission();
+  unlockAudio();          // 1) 소리 먼저 (버튼 누른 순간)
+  await askPermission();  // 2) 그다음 알림 허용 물어보기
   alarm = { alarmAt, trainAt, nokdong, isTest, station: stationName(stationSel.value), dir: DIR_NAME[direction] };
   formCard.classList.add("hidden");
   statusCard.classList.remove("hidden", "ringing");
@@ -293,6 +302,7 @@ const FANFARE = [
 function playFanfare() {
   if (!audioCtx) return;
   try {
+    if (audioCtx.state !== "running") audioCtx.resume();
     const now = audioCtx.currentTime + 0.05;
     FANFARE.forEach(([freq, t, len]) => {
       // 트럼펫처럼: 톱니파 소리를 필터로 부드럽게 깎고, 처음에 살짝 밝아졌다가 줄어듦
