@@ -116,7 +116,7 @@
       <li>역, 방향을 고르면 오늘 남은 열차 시간이 목록에 나와. 그중 탈 열차를 고르면 돼.</li>
       <li>요일은 오늘 날짜로 자동으로 골라져. 공휴일이나 명절이면 직접 바꿔줘.</li>
       <li>알림이 울릴 때까지 <b>이 페이지를 화면에 켜 둬야</b> 해. 화면이 꺼지면 폰이 페이지를 멈춰서 안 울려.</li>
-      <li>소리가 나려면 무음을 풀고 미디어 볼륨을 올려줘.</li>
+      <li>알림 소리는 폰 기본 알림음이야. 처음에 "알림 허용"을 물으면 허용을 눌러줘. 무음이면 진동만 와.</li>
       <li>시간표 출처: <a href="https://www.grtc.co.kr/subway/contents/directionOfSotae" target="_blank" rel="noopener">광주교통공사 열차시각표</a> (2026-11-26에 가져옴). 시간표가 바뀌면 다시 가져와야 해.</li>
     </ul>
   </section>
@@ -166,7 +166,7 @@ const $ = (id) => document.getElementById(id);
 const stationSel = $("station"), trainSel = $("train");
 const formCard = $("form"), statusCard = $("statusCard");
 let direction = "P", day = todayDayType();
-let timer = null, alarm = null, ringing = false, audioCtx = null;
+let timer = null, alarm = null, ringing = false;
 
 STATIONS.forEach(([id, name]) => stationSel.add(new Option(name, id)));
 
@@ -229,20 +229,6 @@ setSeg("dirSeg", direction);
 setSeg("daySeg", day);
 fillTrains();
 setInterval(() => { if (!alarm) fillTrains(); }, 30000); // 30초마다 "몇 분 뒤" 새로고침
-
-// 소리 잠금 풀기: 폰은 "사용자가 버튼을 누른 그 순간"에만 소리를 켜게 해 줘.
-// 그래서 알림 허용 창을 띄우기 "전에", 버튼을 누르자마자 바로 실행해야 해.
-function unlockAudio() {
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    // 아이폰은 실제로 소리를 한 번 내야 풀려서, 아주 짧은 무음을 재생
-    const buf = audioCtx.createBuffer(1, 1, 22050);
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
-  } catch (e) {}
-}
-
 // 맞춰 둔 알림을 기억해 두기 (페이지를 닫았다 다시 열어도 이어서 세기)
 const CUR_KEY = "subway-alarm-current";
 function saveCurrent() {
@@ -286,9 +272,8 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 }
 
 function start(alarmAt, trainAt, nokdong, isTest) {
-  unlockAudio();   // 1) 버튼 누른 순간에 소리 켜 두기
-  askPermission(); // 2) 알림 허용 묻기
-  alarm ={ alarmAt, trainAt, nokdong, isTest, station: stationName(stationSel.value), dir: DIR_NAME[direction] };
+  askPermission(); // 알림 허용 묻기
+  alarm = { alarmAt, trainAt, nokdong, isTest, station: stationName(stationSel.value), dir: DIR_NAME[direction] };
   saveCurrent();
   showStatus();
 }
@@ -313,45 +298,7 @@ function ring() {
   document.title = "🔔 열차 곧 도착!";
   showNotice("🚇 지하철 온다!!", msg);
   if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
-  playFanfare(); // 한 번만 짧게 (약 2초)
 }
-
-// "빰빠바밤~" 트럼펫 느낌의 짧은 팡파르 (직접 만든 소리, 약 2초)
-// [음 높이(Hz), 시작 시각(초), 길이(초)]
-const FANFARE = [
-  [523, 0.00, 0.12],  // 도  (빰)
-  [523, 0.15, 0.12],  // 도  (빠)
-  [523, 0.30, 0.12],  // 도  (바)
-  [659, 0.45, 0.30],  // 미  (밤)
-  [523, 0.78, 0.14],  // 도
-  [659, 0.95, 0.14],  // 미
-  [784, 1.12, 0.85],  // 솔 (길게~)
-  [659, 1.12, 0.85],  // 미 (같이 울려서 화음)
-  [523, 1.12, 0.85],  // 도 (같이 울려서 화음)
-];
-function playFanfare() {
-  if (!audioCtx) return;
-  try {
-    if (audioCtx.state !== "running") audioCtx.resume();
-    const now = audioCtx.currentTime + 0.05;
-    FANFARE.forEach(([freq, t, len]) => {
-      // 트럼펫처럼: 톱니파 소리를 필터로 부드럽게 깎고, 처음에 살짝 밝아졌다가 줄어듦
-      const o = audioCtx.createOscillator(), f = audioCtx.createBiquadFilter(), g = audioCtx.createGain();
-      o.type = "sawtooth"; o.frequency.value = freq;
-      f.type = "lowpass"; f.Q.value = 1;
-      f.frequency.setValueAtTime(freq * 2, now + t);
-      f.frequency.linearRampToValueAtTime(freq * 6, now + t + 0.04);
-      f.frequency.linearRampToValueAtTime(freq * 3, now + t + len);
-      g.gain.setValueAtTime(0.0001, now + t);
-      g.gain.exponentialRampToValueAtTime(0.18, now + t + 0.03);
-      g.gain.setValueAtTime(0.18, now + t + len * 0.7);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + t + len);
-      o.connect(f).connect(g).connect(audioCtx.destination);
-      o.start(now + t); o.stop(now + t + len + 0.05);
-    });
-  } catch (e) {}
-}
-
 function stopSound() {
   if (navigator.vibrate) navigator.vibrate(0);
 }
