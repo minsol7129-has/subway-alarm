@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지하철 온다!! 🔔</title>
+<style>
+  :root {
+    --bg: #f5f7fb; --card: #ffffff; --text: #1d2433; --muted: #6b7385;
+    --line: #dfe3ec; --accent: #1f6feb; --accent-text: #ffffff;
+    --warn: #d1242f; --ok: #1a7f37;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10141c; --card: #1a202b; --text: #e8ecf3; --muted: #9aa3b5;
+      --line: #2c3442; --accent: #4c8dff; --accent-text: #0b0f16;
+      --warn: #ff6b6b; --ok: #4ac26b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    line-height: 1.5;
+  }
+  main { max-width: 440px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: .92rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px; margin-bottom: 14px;
+  }
+  label { display: block; font-weight: 600; margin: 12px 0 6px; font-size: .95rem; }
+  label:first-child { margin-top: 0; }
+  select {
+    width: 100%; font-size: 1.05rem; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  .seg { display: flex; gap: 8px; }
+  .seg > * { flex: 1; }
+  .seg button {
+    width: 100%; padding: 10px 4px; border-radius: 10px; font-size: .95rem;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 0; }
+  .empty { color: var(--warn); font-size: .92rem; margin: 6px 0 0; }
+  .btn {
+    width: 100%; padding: 14px; border: 0; border-radius: 12px; font-size: 1.05rem;
+    font-weight: 700; cursor: pointer; margin-top: 16px;
+    background: var(--accent); color: var(--accent-text);
+  }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 600; margin-top: 8px; }
+  .status { text-align: center; }
+  .status .big { font-size: 2.4rem; font-weight: 800; font-variant-numeric: tabular-nums; margin: 4px 0; }
+  .status .info { color: var(--muted); font-size: .95rem; }
+  .ringing { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 35%, transparent); }
+  .ringing .big { color: var(--warn); }
+  .note { color: var(--muted); font-size: .85rem; }
+  .note li { margin-bottom: 4px; }
+  .note a { color: inherit; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>지하철 온다!! 🔔</h1>
+  <p class="sub">광주 도시철도 1호선 · 내가 탈 열차가 내 역에 오기 5분 전에 알려줘</p>
+
+  <section class="card" id="form">
+    <label for="station">타는 역</label>
+    <select id="station"></select>
+
+    <label>방향</label>
+    <div class="seg" id="dirSeg">
+      <button type="button" data-v="S" aria-pressed="false">소태 방향</button>
+      <button type="button" data-v="P" aria-pressed="true">평동 방향</button>
+    </div>
+
+    <label>요일</label>
+    <div class="seg" id="daySeg">
+      <button type="button" data-v="WEEK">평일</button>
+      <button type="button" data-v="SAT">토요일</button>
+      <button type="button" data-v="DAYOFF">휴일</button>
+      <button type="button" data-v="HOLI">명절</button>
+    </div>
+    <p class="hint" id="dayHint"></p>
+
+    <label for="train">탈 열차 (내 역 도착 시각)</label>
+    <select id="train"></select>
+    <p class="empty hidden" id="noTrain"></p>
+
+    <button class="btn" id="start">알림 맞추기</button>
+    <button class="btn ghost" id="test">10초 뒤 테스트 알림</button>
+  </section>
+
+  <section class="card status hidden" id="statusCard">
+    <div class="info" id="statusTrain"></div>
+    <div class="big" id="countdown">--:--</div>
+    <div class="info" id="statusMsg"></div>
+    <button class="btn ghost" id="stop">알림 끄기</button>
+  </section>
+
+  <section class="card note">
+    <strong>쓰는 법</strong>
+    <ul>
+      <li>역, 방향을 고르면 오늘 남은 열차 시간이 목록에 나와. 그중 탈 열차를 고르면 돼.</li>
+      <li>요일은 오늘 날짜로 자동으로 골라져. 공휴일이나 명절이면 직접 바꿔줘.</li>
+      <li>알림이 울릴 때까지 <b>이 페이지를 열어 둬야</b> 해. 화면을 끄거나 다른 앱으로 오래 가면 폰이 페이지를 멈춰서 늦게 울릴 수 있어.</li>
+      <li>처음에 "알림 허용"을 물으면 허용을 눌러줘. 소리가 나려면 폰이 무음이 아니어야 해.</li>
+      <li>시간표 출처: <a href="https://www.grtc.co.kr/subway/contents/directionOfSotae" target="_blank" rel="noopener">광주교통공사 열차시각표</a> (2026-11-26에 가져옴). 시간표가 바뀌면 다시 가져와야 해.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+// 광주 도시철도 1호선 역별 열차 시각표
+// 출처: 광주교통공사 사이버스테이션 열차시각표 (https://www.grtc.co.kr/subway/contents/directionOfSotae , directionOfNokdong)
+// 가져온 날: 2026-11-26
+// 역 번호: 01 평동 ~ 20 녹동 (공사 사이트 번호 그대로)
+// P = 평동 방향, S = 소태 방향(녹동행 포함)
+// WEEK = 평일, SAT = 토요일, DAYOFF = 휴일, HOLI = 명절
+// 시간은 글자를 줄여서 저장했어. 풀어 쓰는 방법은 index.html의 decodeTimes() 참고.
+// 원본에서 고친 것: 금남로4가 소태방향 명절 "20:99"는 잘못된 시간이라 뺐고, 문화전당 평동방향 명절 "09:60"은 10:00으로 읽었어.
+const TIMETABLE = {"10":{"P":{"WEEK":"~0340pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0340pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0340pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0340pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffh"},"S":{"WEEK":"~0347nPfbKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0347pfffPdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0347pfffPdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0347pgffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"11":{"P":{"WEEK":"~0339pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0339pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0339pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0339pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0349nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0349pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0349pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0349pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"12":{"P":{"WEEK":"~0336pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0336pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0336pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0335pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0351nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0351pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0351pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0351pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"13":{"P":{"WEEK":"~0335pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0335pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0335pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0335pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0352nPfbKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0352pfffPdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0352pfffPdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0352pgffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"14":{"P":{"WEEK":"~0333pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0333pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0333pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0333pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0354nPfbKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0354pfffPdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0354pfffPdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0354pgffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"15":{"P":{"WEEK":"~0332pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0332pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0332pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0332pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0356nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0356pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0356pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0356pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNddsfPfffffgjj"}},"16":{"P":{"WEEK":"~0330pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0330pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0330pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0330pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffh"},"S":{"WEEK":"~0357nPfbKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0357pfffPdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0357pfffPdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0357pgffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"17":{"P":{"WEEK":"~0328pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0328pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0328pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0328pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffh"},"S":{"WEEK":"~0359nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0359pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0359pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0359pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"18":{"P":{"WEEK":"~0327pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0327pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0327pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0327pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0361nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0361pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0361pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0361pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"19":{"P":{"WEEK":"~0325pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0325pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0325pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0325pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0363nP@;UU_@~0605n~0663n~0723n~0783n~0843n~0903n~0963n~1013n~1053n~1093n;:..~1266n~1325n~1389nZ","SAT":"~0422n~0473n~0515n~0555n~0605n~0665n~0725n~0785n~0845n~0905n~0965n~1025n;;~1145n~1205n~1285n~1345n","DAYOFF":"~0422n~0485nY~0545n~0605n~0665n~0725n~0785n~0845n~0905n~0965n~1025n;;~1145n~1205n~1285n~1341n","HOLI":"~0434n~0499n~0551n~0603n~0681n~0733n~0811n~0863n~0915n~0993n~1045n~1097n~1149n~1227n~1311n"}},"20":{"P":{"WEEK":"~0374pk~0434pkpmnu~0614p~0674p~0734p~0794p~0854p~0914p~0974p~1034pzzzsru~1284p~1337p","SAT":"~0434p~0484p~0524p~0564p~0614p~0674p~0734p~0794p~0854p~0914p~0974p~1034puu~1154p~1214p~1304p","DAYOFF":"~0438p~0494puu~0614p~0674p~0734p~0794p~0854p~0914p~0974p~1034puu~1154p~1214p~1302p","HOLI":"~0444p~0511p~0563p~0615p~0693p~0745p~0823p~0875p~0927p~1005p~1057p~1109p~1161p~1239p~1325p"},"S":{"WEEK":"","SAT":"","DAYOFF":"","HOLI":""}},"01":{"P":{"WEEK":"","SAT":"","DAYOFF":"","HOLI":""},"S":{"WEEK":"~0330nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0330pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0330pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0330pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"02":{"P":{"WEEK":"~0355pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0355pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0355pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0355pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0332nPfbKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0332pfffPdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0332pfffPdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0332pgffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"03":{"P":{"WEEK":"~0353pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0353pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0353pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0353pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffh"},"S":{"WEEK":"~0334nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0334pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0334pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0334pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"04":{"P":{"WEEK":"~0351pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0351pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0351pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0351pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffh"},"S":{"WEEK":"~0336nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0336pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0336pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0336pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"05":{"P":{"WEEK":"~0350pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0350pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0350pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0350pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0337nPfbKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0337pfffPdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0337pfffPdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0337pgffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"06":{"P":{"WEEK":"~0346pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0346pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0346pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0346pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffh"},"S":{"WEEK":"~0341nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0341pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0341pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaKaKaaccMdddffff","HOLI":"~0341pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"07":{"P":{"WEEK":"~0345pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccdddd","SAT":"~0345pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddffff","DAYOFF":"~0345pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddffff","HOLI":"~0345pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffg"},"S":{"WEEK":"~0342nPfbKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0342pfffPdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0342pfffPdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0342pgffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"08":{"P":{"WEEK":"~0343pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0343pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0343pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0343pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffh"},"S":{"WEEK":"~0344nPfbKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0344pfffPdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0344pfffPdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0344pgffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}},"09":{"P":{"WEEK":"~0341pkfaaaaa875555555555555557788aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa997777777777777777aaaaaaaaaaaaaabccddde","SAT":"~0341pkfffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabddfffg","DAYOFF":"~0341pkfffffcccccaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccccdddfffg","HOLI":"~0341pkffffffffddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddffffffffh"},"S":{"WEEK":"~0346nPebKaaKaKaK7555F555555F55558888I8aaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaKaaaKaaaKaaK877H777H777H788899J9aaaaKaaabbMcNdd","SAT":"~0346pfffOdddMcaaKaaaKaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaaaaKadeeeff","DAYOFF":"~0346pfffOdddcMcMccMaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaaaaKaaKaaKaaaaaKaaaaaKaaaaaaaKaaccMdddffff","HOLI":"~0346pfffdNddddNdddNdddNdddddNdddNdddddNdddNdddNdddddNdddNdddNdddNdddddNdddffPfffffgjj"}}};
+</script>
+<script>
+// 공사 사이트의 역 번호 순서 (01 평동 ~ 20 녹동)
+const STATIONS = [
+  ["20", "녹동"], ["19", "소태"], ["18", "학동·증심사입구"], ["17", "남광주"],
+  ["16", "문화전당(구도청)"], ["15", "금남로4가"], ["14", "금남로5가"], ["13", "양동시장"],
+  ["12", "돌고개"], ["11", "농성"], ["10", "화정"], ["09", "쌍촌"], ["08", "운천"],
+  ["07", "상무"], ["06", "김대중컨벤션센터(마륵)"], ["05", "공항"], ["04", "송정공원"],
+  ["03", "광주송정역"], ["02", "도산"], ["01", "평동"]
+];
+const DIR_NAME = { S: "소태 방향", P: "평동 방향" };
+const DAY_NAME = { WEEK: "평일", SAT: "토요일", DAYOFF: "휴일", HOLI: "명절" };
+const LEAD_MIN = 5;
+const KEY = "subway-alarm-v2";
+
+// timetable.js에 줄여서 저장한 시간을 풀기
+// 한 글자 = 앞 열차와 몇 분 차이인지. 소문자/숫자 = 보통 열차, 대문자/기호 = 녹동행
+// "~0330n" = 0330분(=05:30)부터 시작, n이면 녹동행
+const A = "0123456789abcdefghijklmnopqrstuvwxyz", B = "ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.:;<=>?@";
+function decodeTimes(s) {
+  const out = []; let i = 0, prev = 0;
+  while (i < s.length) {
+    let m, nd;
+    if (s[i] === "~") { m = +s.slice(i + 1, i + 5); nd = s[i + 5] === "n"; i += 6; }
+    else { let k = A.indexOf(s[i]); nd = k < 0; if (nd) k = B.indexOf(s[i]); m = prev + k; i++; }
+    prev = m; out.push({ min: m, nokdong: nd });
+  }
+  return out;
+}
+
+const $ = (id) => document.getElementById(id);
+const stationSel = $("station"), trainSel = $("train");
+const formCard = $("form"), statusCard = $("statusCard");
+let direction = "P", day = todayDayType();
+let timer = null, alarm = null, ringing = false, audioCtx = null;
+
+STATIONS.forEach(([id, name]) => stationSel.add(new Option(name, id)));
+
+function todayDayType() {
+  const w = new Date().getDay();
+  return w === 0 ? "DAYOFF" : w === 6 ? "SAT" : "WEEK";
+}
+function pad(n) { return String(n).padStart(2, "0"); }
+function minToText(m) { return `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`; }
+function hhmm(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function stationName(id) { return STATIONS.find((s) => s[0] === id)[1]; }
+
+function setSeg(segId, value) {
+  document.querySelectorAll(`#${segId} button`).forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.v === value)));
+}
+document.querySelectorAll("#dirSeg button").forEach((b) =>
+  b.addEventListener("click", () => { direction = b.dataset.v; setSeg("dirSeg", direction); fillTrains(); save(); }));
+document.querySelectorAll("#daySeg button").forEach((b) =>
+  b.addEventListener("click", () => { day = b.dataset.v; setSeg("daySeg", day); fillTrains(); }));
+stationSel.addEventListener("change", () => { fillTrains(); save(); });
+
+// 오늘 남은 열차 중, 지금부터 5분 넘게 남은 것만 보여 주기
+function fillTrains() {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const all = decodeTimes(TIMETABLE[stationSel.value][direction][day] || "");
+  const list = all.filter((t) => t.min - LEAD_MIN > nowMin);
+  trainSel.innerHTML = "";
+  list.forEach((t) => {
+    const left = Math.round(t.min - nowMin);
+    const label = `${minToText(t.min)}${t.nokdong ? " (녹동행)" : ""} · ${left}분 뒤`;
+    trainSel.add(new Option(label, String(t.min)));
+  });
+  const msg = $("noTrain");
+  if (!all.length) {
+    msg.textContent = `${stationName(stationSel.value)}역에서는 ${DIR_NAME[direction]} 열차가 없어. 방향을 바꿔줘.`;
+  } else if (!list.length) {
+    msg.textContent = "오늘 남은 열차가 없어 (5분 안에 오는 열차는 알림을 못 맞춰).";
+  }
+  msg.classList.toggle("hidden", list.length > 0);
+  trainSel.classList.toggle("hidden", list.length === 0);
+  $("start").disabled = list.length === 0;
+  $("dayHint").textContent = day === todayDayType()
+    ? `오늘은 ${DAY_NAME[day]} 시간표야.`
+    : `오늘 날짜로는 ${DAY_NAME[todayDayType()]}인데 ${DAY_NAME[day]} 시간표로 보고 있어.`;
+}
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({ station: stationSel.value, direction })); } catch (e) {}
+}
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (saved) {
+    if (TIMETABLE[saved.station]) stationSel.value = saved.station;
+    if (DIR_NAME[saved.direction]) direction = saved.direction;
+  }
+} catch (e) {}
+setSeg("dirSeg", direction);
+setSeg("daySeg", day);
+fillTrains();
+setInterval(() => { if (!alarm) fillTrains(); }, 30000); // 30초마다 "몇 분 뒤" 새로고침
+
+async function askPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    try { await Notification.requestPermission(); } catch (e) {}
+  }
+  // 소리는 버튼을 누를 때 미리 켜 둬야 나중에 울릴 수 있음
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+  } catch (e) {}
+}
+
+async function start(alarmAt, trainAt, nokdong, isTest) {
+  await askPermission();
+  alarm = { alarmAt, trainAt, nokdong, isTest, station: stationName(stationSel.value), dir: DIR_NAME[direction] };
+  formCard.classList.add("hidden");
+  statusCard.classList.remove("hidden", "ringing");
+  $("statusTrain").textContent =
+    `${alarm.station} · ${alarm.dir} · ${hhmm(trainAt)}${nokdong ? " 녹동행" : ""} 열차` + (isTest ? " (테스트)" : "");
+  clearInterval(timer);
+  timer = setInterval(tick, 500);
+  tick();
+}
+
+function tick() {
+  if (!alarm || ringing) return;
+  const left = alarm.alarmAt.getTime() - Date.now();
+  if (left <= 0) return ring();
+  const s = Math.ceil(left / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  $("countdown").textContent = h ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+  $("statusMsg").textContent = `${hhmm(alarm.alarmAt)}에 알림이 울려`;
+}
+
+function ring() {
+  ringing = true;
+  clearInterval(timer);
+  statusCard.classList.add("ringing");
+  $("countdown").textContent = "출발!";
+  const msg = `${alarm.station} ${alarm.dir} ${hhmm(alarm.trainAt)} 열차가 5분 뒤 도착해`;
+  $("statusMsg").textContent = msg;
+  document.title = "🔔 열차 곧 도착!";
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification("🚇 열차 도착 5분 전", { body: msg, requireInteraction: true }); } catch (e) {}
+  }
+  if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+  playChime(); // 한 번만 짧게 (약 2초)
+}
+
+// 지하철 도착 안내 느낌의 짧은 차임 멜로디 (직접 만든 소리, 약 2초)
+// [음 높이(Hz), 시작 시각(초), 길이(초)]
+const CHIME = [
+  [784, 0.00, 0.5],   // 솔
+  [988, 0.22, 0.5],   // 시
+  [1175, 0.44, 0.5],  // 레
+  [1568, 0.66, 1.3],  // 높은 솔 (길게)
+  [1175, 0.66, 1.3],  // 레 (같이 울려서 화음)
+];
+function playChime() {
+  if (!audioCtx) return;
+  try {
+    const now = audioCtx.currentTime + 0.05;
+    CHIME.forEach(([freq, t, len]) => {
+      // 종소리처럼: 기본음 + 살짝 높은 배음, 빨리 커졌다가 천천히 작아짐
+      [[1, 0.35], [2.01, 0.08]].forEach(([mul, vol]) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = "sine"; o.frequency.value = freq * mul;
+        g.gain.setValueAtTime(0.0001, now + t);
+        g.gain.exponentialRampToValueAtTime(vol, now + t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + t + len);
+        o.connect(g).connect(audioCtx.destination);
+        o.start(now + t); o.stop(now + t + len + 0.05);
+      });
+    });
+  } catch (e) {}
+}
+
+function stopSound() {
+  if (navigator.vibrate) navigator.vibrate(0);
+}
+
+function stop() {
+  clearInterval(timer); stopSound();
+  alarm = null; ringing = false;
+  document.title = "지하철 온다!! 🔔";
+  statusCard.classList.add("hidden");
+  formCard.classList.remove("hidden");
+  fillTrains();
+}
+
+$("start").addEventListener("click", () => {
+  if (!trainSel.value) return;
+  const min = +trainSel.value;
+  const trainAt = new Date(); trainAt.setHours(0, min, 0, 0); // 24:00 넘는 시간도 다음 날로 계산됨
+  const opt = trainSel.selectedOptions[0];
+  start(new Date(trainAt.getTime() - LEAD_MIN * 60000), trainAt, opt.text.includes("녹동행"), false);
+});
+$("test").addEventListener("click", () => {
+  const alarmAt = new Date(Date.now() + 10000);
+  start(alarmAt, new Date(alarmAt.getTime() + LEAD_MIN * 60000), false, true);
+});
+$("stop").addEventListener("click", stop);
+
+// 다른 앱에 갔다 돌아왔을 때 바로 다시 확인
+document.addEventListener("visibilitychange", tick);
+</script>
+</body>
+</html>
